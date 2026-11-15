@@ -1,9 +1,9 @@
 # Build every target with the pinned toolchain and check each library against
 # the declared interface and frame rules, generate the vectors, then on each of
 # the 7 supported targets run the test runner (vectors and scenarios) and the
-# shell loop test, run transport interop over quic-v1 against go-libp2p and
-# rust-libp2p, and write the tick tables (ARCHITECTURE.md sections 1, 4, 7
-# and 10).
+# shell loop test, run transport interop over quic-v1 on each Linux ISA against
+# the 12 implementations of libp2p/test-plans, and write the tick tables
+# (ARCHITECTURE.md sections 1, 4, 7 and 10).
 name: ci
 
 on:
@@ -130,12 +130,19 @@ jobs:
           name: results-macos-${{ matrix.isa }}
           path: results-macos-${{ matrix.isa }}.txt
 
-  # transport-interop of libp2p/test-plans over quic-v1 against go-libp2p
-  # v0.48 and rust-libp2p v0.56, both directions. The full matrix of 12
-  # implementations runs with tests/interop/run.sh.
+  # transport-interop of libp2p/test-plans over quic-v1: the node of each Linux
+  # ISA against each of the 12 implementations, both directions, one job per
+  # ISA and implementation. The RISC-V node runs under QEMU user mode on ARM64.
   interop:
     needs: build
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        isa: [x86_64, arm64, riscv64]
+        impl: [go-v0.46, go-v0.47, go-v0.48, rust-v0.53, rust-v0.54, rust-v0.55, rust-v0.56,
+               nim-v2.4, jvm-libp2p-v1.3, python-v0.x, c-v0.0.1, eth-p2p-z-v0.0.1]
+    runs-on: ${{ matrix.isa == 'x86_64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -144,10 +151,46 @@ jobs:
         with: { name: build, path: build }
       - name: Build the images
         run: |
-          chmod +x build/linux-x86_64/node
-          tests/interop/build-images.sh x86_64 "$RUNNER_TEMP" go-v0.48 rust-v0.56
+          chmod +x build/linux-${{ matrix.isa }}/node
+          tests/interop/build-images.sh ${{ matrix.isa }} "$RUNNER_TEMP" ${{ matrix.impl }}
       - name: Run the pairs
-        run: tests/interop/run.sh x86_64 go-v0.48 rust-v0.56
+        run: |
+          set -o pipefail
+          tests/interop/run.sh ${{ matrix.isa }} ${{ matrix.impl }} | tee interop-${{ matrix.isa }}-${{ matrix.impl }}.txt
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: interop-${{ matrix.isa }}-${{ matrix.impl }}
+          path: interop-${{ matrix.isa }}-${{ matrix.impl }}.txt
+
+  # Count the interop pairs of each ISA: 12 implementations, both directions,
+  # so 24 must pass on each.
+  interop-results:
+    needs: interop
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        continue-on-error: true
+        with: { pattern: interop-*, path: interop, merge-multiple: true }
+      - name: Count the pairs
+        run: |
+          status=0
+          {
+            echo "| ISA | Passed | Failed |"
+            echo "|---|---|---|"
+            for isa in x86_64 arm64 riscv64; do
+              lines=$(cat interop/interop-$isa-*.txt 2>/dev/null || true)
+              p=$(printf '%s\n' "$lines" | grep -c '^PASS ' || true)
+              f=$(printf '%s\n' "$lines" | grep -c '^FAIL ' || true)
+              echo "| $isa | $p | $f |"
+              [ "$p" = 24 ] || status=1
+            done
+            echo
+            grep -h '^FAIL ' interop/*.txt 2>/dev/null | sed 's/^/- /' || true
+          } > summary.md
+          cat summary.md | tee -a "$GITHUB_STEP_SUMMARY"
+          exit $status
 
   # Write the tick tables into docs/reference/ from the results of every target.
   # On a push to main, commit them when they changed. When main has moved on,

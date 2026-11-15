@@ -21,7 +21,11 @@ tests/interop/run.sh arm64
 | `build-images.sh` | `build-images.sh ISA WORK_DIR [IMAGE ...]`: builds the image of the node, checks out test-plans in WORK_DIR, and builds the images of the other implementations. |
 | `run.sh` | `run.sh ISA [IMAGE ...]`: runs each pair with Docker Compose and a Redis container, and prints PASS with the two times of the dialer, or FAIL. A pair passes when the dialer prints its times. `RUNS=n` runs each pair n times; `BASELINE=1` also runs each implementation, and asm-quic, against itself. |
 
-[.github/workflows/ci.yml](../../.github/workflows/ci.yml) runs the Linux x86-64 node against go-v0.48 and rust-v0.56, both ways.
+[.github/workflows/ci.yml](../../.github/workflows/ci.yml) runs every pair on each Linux ISA:
+
+- One job per ISA and implementation, so 36 jobs.
+- x86-64 runs on `ubuntu-24.04`; ARM64 and RISC-V run on `ubuntu-24.04-arm`, the RISC-V node under QEMU user mode.
+- The `interop-results` job counts the pairs, and fails unless 24 pass on each ISA.
 
 ## Implementations
 
