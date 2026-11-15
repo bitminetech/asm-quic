@@ -106,6 +106,7 @@
 .set QUIC_ACTION_STREAM_DATA, 7         /* application: bytes of a stream */
 .set QUIC_ACTION_STREAM_FIN, 8          /* application: the peer sends no more on a stream */
 .set QUIC_ACTION_STREAM_RESET, 9        /* application: the peer reset a stream */
+.set QUIC_ACTION_STREAM_ACKED, 10       /* application: the peer acknowledged bytes of a stream */
 
 .set QUIC_ACT_SOCKET, 16                /* SEND */
 .set QUIC_ACT_ADDR, 24
@@ -133,6 +134,7 @@
 .set QUIC_ACT_FIN_SIZE, 24              /* STREAM_FIN */
 .set QUIC_ACT_S_CODE, 24                /* STREAM_RESET */
 .set QUIC_ACT_RESET_SIZE, 32
+.set QUIC_ACT_ACKED_SIZE, 32             /* STREAM_ACKED: the count in QUIC_ACT_S_COUNT */
 
 /* Why a connection ended (QUIC_ACT_REASON). */
 .set QUIC_ERR_LOCAL, 1                  /* the application closed it */

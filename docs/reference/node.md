@@ -73,6 +73,7 @@
 - [`StreamDataAction`](#type-streamdataaction): kind STREAM_DATA: bytes of a stream, in order.
 - [`StreamFinAction`](#type-streamfinaction): kind STREAM_FIN: the peer sends no more on a stream.
 - [`StreamResetAction`](#type-streamresetaction): kind STREAM_RESET: the peer reset a stream, or stopped our side.
+- [`StreamAckedAction`](#type-streamackedaction): kind STREAM_ACKED: the peer acknowledged bytes of a stream.
 
 ### Constants
 
@@ -1835,9 +1836,10 @@ An output of `quic_step`: a size, a kind, then the fields of the kind.
 
 ### Rules
 
-- Kinds: SEND 1, WAKEUP 2, CONNECTED 3, DIAL_FAILED 4, CLOSED 5, STREAM_OPENED 6, STREAM_DATA 7, STREAM_FIN 8, STREAM_RESET 9.
+- Kinds: SEND 1, WAKEUP 2, CONNECTED 3, DIAL_FAILED 4, CLOSED 5, STREAM_OPENED 6, STREAM_DATA 7, STREAM_FIN 8, STREAM_RESET 9, STREAM_ACKED 10.
 - For each connection: CONNECTED first, then its stream actions, then CLOSED.
 - For each stream: STREAM_OPENED first, then STREAM_DATA in order, then STREAM_FIN or STREAM_RESET.
+- STREAM_ACKED of a stream comes after its STREAM_OPENED.
 
 
 ## Type `SendAction`
@@ -2007,6 +2009,26 @@ Kind STREAM_RESET: the peer reset a stream, or stopped our side.
 ### Rules
 
 - Size: 32 bytes.
+
+
+## Type `StreamAckedAction`
+
+Kind STREAM_ACKED: the peer acknowledged bytes of a stream.
+
+### Layout
+
+| Offset | Field | Type | Meaning |
+|---|---|---|---|
+| 0 | `size` | u64 | Bytes of the value, a multiple of 8 |
+| 8 | `kind` | u64 | The kind |
+| 16 | `stream` | u64 | The stream handle |
+| 24 | `count` | u64 | Bytes acknowledged since the last STREAM_ACKED of the stream |
+
+### Rules
+
+- Size: 32 bytes.
+- The bytes count from the start of the stream with no gap: after STREAM_ACKED, the application knows how many of the bytes it wrote the peer has.
+- The counts of a stream add up to at most the bytes written to it.
 
 
 ## Test vectors

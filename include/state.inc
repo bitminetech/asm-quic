@@ -294,7 +294,8 @@
 .set S_RX_SEEN, 320                     /* the largest offset received */
 .set S_RX_FINAL, 328                    /* the final size, or NONE */
 .set S_RX_MAX, 336                      /* the MAX_STREAM_DATA we gave */
-.set S_SIZE, 344
+.set S_ACK_TOLD, 344                    /* bytes of S_ACKED the application has in STREAM_ACKED */
+.set S_SIZE, 352
 
 /* Stream flags. */
 .set SF_LOCAL, 1                        /* we opened it */

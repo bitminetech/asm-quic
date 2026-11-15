@@ -949,8 +949,9 @@ END_FUNCTION quic_on_max_stream_data
 
 /*
  * quic_stream_tell(stream) -> 1 when the stream is over and freed; else 0
- * after STREAM_OPENED, STREAM_DATA of the bytes in order, STREAM_FIN and
- * STREAM_RESET go out while the action room allows; new credit is given.
+ * after STREAM_OPENED, STREAM_DATA of the bytes in order, STREAM_FIN,
+ * STREAM_RESET and STREAM_ACKED go out while the action room allows; new
+ * credit is given.
  * rbx the connection. rbp stream, r12 the next segment or an action,
  * r13 the segment, X24 the bytes, X25 the action.
  */
@@ -1065,7 +1066,25 @@ LOCAL_FUNCTION quic_stream_tell
     and     $~SF_TELL_RESET, %rax
     or      $SF_TOLD_RESET, %rax
     mov     %rax, S_FLAGS(%rbp)
-6:  call    quic_stream_credit
+6:  mov     S_ACKED(%rbp), %rax             /* bytes the peer acknowledged */
+    cmp     S_ACK_TOLD(%rbp), %rax
+    je      61f
+    call    quic_room
+    cmp     $QUIC_ACT_ACKED_SIZE, %rax
+    jb      8f
+    mov     $QUIC_ACTION_STREAM_ACKED, %edi
+    mov     $QUIC_ACT_ACKED_SIZE, %esi
+    call    quic_action
+    mov     %rax, %r12
+    mov     %rbp, %rdi
+    call    quic_stream_handle
+    mov     %rax, QUIC_ACT_STREAM(%r12)
+    mov     S_ACKED(%rbp), %rax
+    mov     %rax, %rcx
+    sub     S_ACK_TOLD(%rbp), %rcx
+    mov     %rcx, QUIC_ACT_S_COUNT(%r12)
+    mov     %rax, S_ACK_TOLD(%rbp)
+61: call    quic_stream_credit
     mov     S_FLAGS(%rbp), %rax             /* over both ways? */
     test    $SF_FIN_ACKED, %rax
     jz      8f

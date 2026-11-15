@@ -921,7 +921,7 @@ quic_stream_tell(stream) -> freed
 
 ### Function does
 
-- Adds STREAM_OPENED, STREAM_DATA of the bytes in order, STREAM_FIN and STREAM_RESET while the action room allows.
+- Adds STREAM_OPENED, STREAM_DATA of the bytes in order, STREAM_FIN, STREAM_RESET, and STREAM_ACKED with the bytes acknowledged since the last one, while the action room allows.
 - Gives new flow control credit.
 - Returns 1 when the stream is over and freed, else 0.
 

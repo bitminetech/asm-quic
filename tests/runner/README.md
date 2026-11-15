@@ -34,7 +34,7 @@ Name files or scenarios to run only those, for example `build/linux-arm64/runner
 
 | Scenario | What it checks |
 |---|---|
-| handshake | A dials B; each gets the host key of the other. A stream carries "hello" one way and "world" back, each with a FIN; then 1 MiB goes from A to B on a new stream. A closes with code 9: A hears LOCAL, B hears PEER with code 9. |
+| handshake | A dials B; each gets the host key of the other. A stream carries "hello" one way and "world" back, each with a FIN; then 1 MiB goes from A to B on a new stream. STREAM_ACKED gives each writer every byte it wrote. A closes with code 9: A hears LOCAL, B hears PEER with code 9. |
 | loss | The same, with every 5th datagram dropped. |
 | key_update | The same, with a key update every 40 packets each way. |
 | key_update_loss | The key updates, with every 7th datagram dropped. |

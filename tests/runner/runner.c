@@ -363,7 +363,7 @@ typedef struct {
     uint64_t pid_len;
     uint64_t conn;          /* the last connection handle */
     uint64_t stream;        /* the last stream handle */
-    uint64_t connected, dial_failed, closed, reason, error, opened, fins, resets;
+    uint64_t connected, dial_failed, closed, reason, error, opened, fins, resets, acked;
     uint8_t *rx;            /* bytes received on streams */
     size_t rx_len;
     uint8_t peer_key[128];
@@ -631,6 +631,8 @@ static void node_step(int i) {
                 n->fins++;
             } else if (kind == QUIC_ACTION_STREAM_RESET) {
                 n->resets++;
+            } else if (kind == QUIC_ACTION_STREAM_ACKED) {
+                n->acked += rd64(a + 24);
             }
         }
         a += size;
@@ -704,6 +706,7 @@ static int both_closed(void) { return nodes[0].closed && nodes[1].closed; }
 
 static size_t big_len;
 static int b_has_all(void) { return nodes[1].rx_len >= big_len && nodes[1].fins > 0; }
+static int a_acked_all(void) { return nodes[0].acked >= 5 + big_len; }
 
 /* A dials B, a stream carries "hello" one way and "world" back, each with a FIN; A closes. */
 static void scenario_handshake(uint64_t drop, uint64_t key_update) {
@@ -744,6 +747,14 @@ static void scenario_handshake(uint64_t drop, uint64_t key_update) {
     run_until(now_us + 60000000, b_has_all);
     check(nodes[1].rx_len == big_len && memcmp(nodes[1].rx, big, big_len) == 0 && nodes[1].fins == 1, "B gets 1 MiB");
     free(big);
+    /* STREAM_ACKED tells each writer of the bytes the peer acknowledged: all of them once the network is quiet. */
+    if (!drop) {
+        run_until(now_us + 5000000, a_acked_all);
+        check(nodes[0].acked == 5 + big_len, "A has STREAM_ACKED for hello and 1 MiB");
+    } else {
+        check(nodes[0].acked > 5 && nodes[0].acked <= 5 + big_len, "A has STREAM_ACKED for part of 1 MiB");
+    }
+    check(nodes[1].acked == 5, "B has STREAM_ACKED for world");
     ev_simple(&nodes[0], QUIC_EVENT_CLOSE, nodes[0].conn, 9, 32);
     run_until(now_us + 5000000, both_closed);
     check(nodes[0].closed == 1 && nodes[0].reason == 1, "A CLOSED, LOCAL");
@@ -1028,14 +1039,14 @@ typedef struct {
 } scenario_entry;
 
 static const scenario_entry SCENARIOS[] = {
-    {"handshake", run_handshake, 0xc7b1cd72edb19129ULL},
-    {"loss", run_loss, 0x8db79dc2f6bbc9e7ULL},
-    {"key_update", run_key_update, 0xef1d3320d7daf296ULL},
-    {"key_update_loss", run_key_update_loss, 0xd31820bd697c2eddULL},
+    {"handshake", run_handshake, 0x1afe81ea3fc84867ULL},
+    {"loss", run_loss, 0x7eed40682cdde597ULL},
+    {"key_update", run_key_update, 0x37921a22c3260ec4ULL},
+    {"key_update_loss", run_key_update_loss, 0xae7b1a7688315c21ULL},
     {"peer_id", run_peer_id, 0x61813c189bb2401fULL},
     {"timeout", run_timeout, 0x9e0b9e9770332633ULL},
     {"secp256k1", run_secp256k1, 0xe90be1cac9ba1e82ULL},
-    {"reset", run_reset, 0x569075c84ac02beaULL},
+    {"reset", run_reset, 0x9169e100f7a15498ULL},
     {"idle", run_idle, 0x6ea0ce32cdc1aef1ULL},
     {"garbage", run_garbage, 0xc1b107ae09169c51ULL},
     {"errors", run_errors, 0xcbf29ce484222325ULL},

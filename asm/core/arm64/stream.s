@@ -872,8 +872,9 @@ END_FUNCTION quic_on_max_stream_data
 
 /*
  * quic_stream_tell(stream) -> 1 when the stream is over and freed; else 0
- * after STREAM_OPENED, STREAM_DATA of the bytes in order, STREAM_FIN and
- * STREAM_RESET go out while the action room allows; new credit is given.
+ * after STREAM_OPENED, STREAM_DATA of the bytes in order, STREAM_FIN,
+ * STREAM_RESET and STREAM_ACKED go out while the action room allows; new
+ * credit is given.
  * x19 the connection. x20 stream, x21 the next segment.
  */
 LOCAL_FUNCTION quic_stream_tell
@@ -999,7 +1000,26 @@ LOCAL_FUNCTION quic_stream_tell
     bic     x9, x9, #SF_TELL_RESET
     orr     x9, x9, #SF_TOLD_RESET
     str     x9, [x20, #S_FLAGS]
-6:  bl      quic_stream_credit
+6:  ldr     x9, [x20, #S_ACKED]             /* bytes the peer acknowledged */
+    ldr     x10, [x20, #S_ACK_TOLD]
+    cmp     x9, x10
+    b.eq    61f
+    bl      quic_room
+    cmp     x0, #QUIC_ACT_ACKED_SIZE
+    b.lo    8f
+    mov     x0, #QUIC_ACTION_STREAM_ACKED
+    mov     x1, #QUIC_ACT_ACKED_SIZE
+    bl      quic_action
+    mov     x21, x0
+    mov     x0, x20
+    bl      quic_stream_handle
+    str     x0, [x21, #QUIC_ACT_STREAM]
+    ldr     x9, [x20, #S_ACKED]
+    ldr     x10, [x20, #S_ACK_TOLD]
+    sub     x10, x9, x10
+    str     x10, [x21, #QUIC_ACT_S_COUNT]
+    str     x9, [x20, #S_ACK_TOLD]
+61: bl      quic_stream_credit
     ldr     x9, [x20, #S_FLAGS]             /* over both ways? */
     tst     x9, #SF_FIN_ACKED
     b.eq    8f
