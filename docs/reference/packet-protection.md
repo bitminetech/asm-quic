@@ -452,7 +452,7 @@ quic_mask_header(buf, pn_offset, pn_len, mask)
 
 | Name | Role | Type |
 |---|---|---|
-| `buf` | input and output | the header |
+| `buf` | state | the header |
 | `pn_offset` | input | u64 |
 | `pn_len` | input | u64: 1 to 4 |
 | `mask` | input | 16 bytes |
@@ -492,7 +492,7 @@ quic_seal(keys, buf, header_len, payload_len, pn, work) -> length
 | Name | Role | Type |
 |---|---|---|
 | `keys` | input | [`PacketKeys`](#type-packetkeys) |
-| `buf` | input and output | the header, its packet number last, then the frames |
+| `buf` | state | the header, its packet number last, then the frames |
 | `header_len` | input | u64, at most 256 |
 | `payload_len` | input | u64, at most 1504 |
 | `pn` | input | u64 |

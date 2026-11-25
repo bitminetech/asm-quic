@@ -571,7 +571,7 @@ quic_ranges_add(stream, start, end, list, max)
 | `stream` | input | a stream slot |
 | `start` | input | u64 |
 | `end` | input | u64 |
-| `list` | input and output | a u8 count, other bits kept, then `max` pairs at list + 8 |
+| `list` | state | a u8 count, other bits kept, then `max` pairs at list + 8 |
 | `max` | input | u64 |
 
 ### Function does
@@ -610,7 +610,7 @@ quic_ranges_remove(stream, list, index)
 | Name | Role | Type |
 |---|---|---|
 | `stream` | input | a stream slot |
-| `list` | input and output | a range list |
+| `list` | state | a range list |
 | `index` | input | u64 |
 
 ### Function never

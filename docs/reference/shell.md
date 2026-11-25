@@ -164,7 +164,7 @@ quic_shell_receive(ctx, events) -> status
 | Name | Role | Type |
 |---|---|---|
 | `ctx` | resource context | [`ShellContext`](#type-shellcontext) |
-| `events` | input and output | [`ByteList`](node.md#type-bytelist) of [`Event`](node.md#type-event) values |
+| `events` | state | [`ByteList`](node.md#type-bytelist) of [`Event`](node.md#type-event) values |
 
 ### Returns
 

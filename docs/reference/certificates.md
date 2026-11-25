@@ -483,7 +483,7 @@ quic_low_s(s)
 
 | Name | Role | Type |
 |---|---|---|
-| `s` | input and output | 32 bytes big endian |
+| `s` | state | 32 bytes big endian |
 
 ### Function never
 
