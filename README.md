@@ -4,7 +4,7 @@ QUIC version 1 with TLS 1.3 in the libp2p TLS profile, for an Ethereum consensus
 
 RFC 9000, RFC 9001 and RFC 9002 (NewReno), client and server, with the libp2p TLS certificate; libp2p protocols such as multistream-select run in the application, on the stream API.
 
-Standard: [asm-standard@2a19d3f](https://github.com/bitminetech/asm-standard/blob/2a19d3f7fa737af1c01720b6e891703e53a682aa/ARCHITECTURE.md)
+Standard: [asm-standard@185917b](https://github.com/bitminetech/asm-standard/blob/185917bedc54ff034e40069318add463c58f4db8/ARCHITECTURE.md)
 
 <!-- CI generates the verification heatmap here. -->
 <table><tr><td>
