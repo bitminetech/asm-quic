@@ -391,26 +391,19 @@ LOCAL_FUNCTION quic_seal
 END_FUNCTION quic_seal
 
 /*
- * quic_open(keys, buf, pn_offset, total, largest, work, result) -> status; result
- * in r10. Removes the header protection of the packet of total bytes at buf in
- * place, decodes the packet number with largest, and decrypts the payload in
- * place after the header. result: the packet number, the header length and the
- * payload length, three u64.
- * Gives QUIC_INVALID_PACKET when the packet is too short for the sample or the
- * tag, or its header or sealed payload is too long for the work area, and
- * QUIC_DECRYPT_FAILED when the tag does not match. buf may change either way.
- * rbx keys, rbp buf, r12 pn offset then header length, r13 total then sealed
- * length, X23 largest then pn, X24 work, X25 result, X26 pn length.
+ * quic_unprotect(keys, buf, pn_offset, total, work) -> status.
+ * Removes the header protection of the packet of total bytes at buf in place:
+ * its first byte and its packet number. Gives QUIC_INVALID_PACKET, with buf
+ * unchanged, when the packet is too short for the sample.
+ * rbx keys, rbp buf, r12 pn offset, r13 total, X24 work, X26 pn length.
  */
-LOCAL_FUNCTION quic_open
+LOCAL_FUNCTION quic_unprotect
     ENTER   0
     mov     %rdi, %rbx
     mov     %rsi, %rbp
     mov     %rdx, %r12
     mov     %rcx, %r13
-    mov     %r8, X23(%rsp)
-    mov     %r9, X24(%rsp)
-    mov     %r10, X25(%rsp)
+    mov     %r8, X24(%rsp)
     mov     $QUIC_INVALID_PACKET, %eax
     lea     20(%r12), %rcx
     cmp     %r13, %rcx
@@ -438,6 +431,39 @@ LOCAL_FUNCTION quic_open
     mov     X24(%rsp), %rcx
     add     $W_MASK, %rcx
     call    quic_mask_header
+    mov     $QUIC_OK, %eax
+9:  LEAVE   0
+END_FUNCTION quic_unprotect
+
+/*
+ * quic_open(keys, buf, pn_offset, total, largest, work, result) -> status; result
+ * in r10. The packet of total bytes at buf, its header protection removed by
+ * quic_unprotect: decodes the packet number with largest, and decrypts the
+ * payload in place after the header. result: the packet number, the header
+ * length and the payload length, three u64.
+ * Gives QUIC_INVALID_PACKET when the packet is too short for the sample or the
+ * tag, or its header or sealed payload is too long for the work area, and
+ * QUIC_DECRYPT_FAILED when the tag does not match. buf changes only on QUIC_OK.
+ * rbx keys, rbp buf, r12 pn offset then header length, r13 total then sealed
+ * length, X23 largest then pn, X24 work, X25 result, X26 pn length.
+ */
+LOCAL_FUNCTION quic_open
+    ENTER   0
+    mov     %rdi, %rbx
+    mov     %rsi, %rbp
+    mov     %rdx, %r12
+    mov     %rcx, %r13
+    mov     %r8, X23(%rsp)
+    mov     %r9, X24(%rsp)
+    mov     %r10, X25(%rsp)
+    mov     $QUIC_INVALID_PACKET, %eax
+    lea     20(%r12), %rcx
+    cmp     %r13, %rcx
+    ja      9f
+    movzbl  (%rbp), %eax                    /* the packet number length, from the first byte */
+    and     $3, %eax
+    inc     %eax
+    mov     %rax, X26(%rsp)
     xor     %edi, %edi                      /* the truncated packet number */
     lea     (%rbp,%r12), %rsi
     mov     X26(%rsp), %rcx
@@ -640,6 +666,14 @@ FUNCTION quic_packet_open
     jae     9f
     mov     %rbx, %rdi
     lea     PS_BUF(%r12), %rsi
+    lea     PS_WORK(%r12), %r8
+    call    quic_unprotect
+    test    %rax, %rax
+    jnz     9f
+    mov     %rbx, %rdi
+    lea     PS_BUF(%r12), %rsi
+    mov     QUIC_OR_PN_OFFSET(%rbp), %rdx
+    mov     X23(%rsp), %rcx
     mov     QUIC_OR_LARGEST(%rbp), %r8
     lea     PS_WORK(%r12), %r9
     lea     PS_RESULT(%r12), %r10

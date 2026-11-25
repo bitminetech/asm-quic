@@ -672,8 +672,9 @@ END_FUNCTION quic_packet_in
 /*
  * quic_try_open(keys) -> 0 when the packet at x21 (x23 bytes, the packet
  * number at x22) opens with the keys: it is copied to the packet buffer of the
- * scratch and opened there, the result in SC_PKT_RESULT. Else the error;
- * the buffer then holds the first byte without header protection.
+ * scratch and opened there (quic_unprotect, then quic_open), the result in
+ * SC_PKT_RESULT. Else the error; when quic_unprotect gave QUIC_OK, the buffer
+ * then holds the packet without header protection.
  * x24 the space record.
  */
 LOCAL_FUNCTION quic_try_open
@@ -687,11 +688,18 @@ LOCAL_FUNCTION quic_try_open
     add     x1, x28, #SC_PKT_BUF
     mov     x2, x22
     mov     x3, x23
+    add     x4, x28, #SC_PKT_WORK
+    bl      quic_unprotect
+    cbnz    x0, 9f
+    mov     x0, x25
+    add     x1, x28, #SC_PKT_BUF
+    mov     x2, x22
+    mov     x3, x23
     ldr     x4, [x24, #SP_LARGEST_RECV]
     add     x5, x28, #SC_PKT_WORK
     add     x6, x28, #SC_PKT_RESULT
     bl      quic_open
-    LEAVE   0
+9:  LEAVE   0
 END_FUNCTION quic_try_open
 
 /* ---------------------------------------------------------------- Frames */

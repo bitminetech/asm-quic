@@ -369,26 +369,19 @@ LOCAL_FUNCTION quic_seal
 END_FUNCTION quic_seal
 
 /*
- * quic_open(keys, buf, pn_offset, total, largest, work, result) -> status.
- * Removes the header protection of the packet of total bytes at buf in place,
- * decodes the packet number with largest, and decrypts the payload in place
- * after the header. result: the packet number, the header length and the
- * payload length, three u64.
- * Gives QUIC_INVALID_PACKET when the packet is too short for the sample or the
- * tag, or its header or sealed payload is too long for the work area, and
- * QUIC_DECRYPT_FAILED when the tag does not match. buf may change either way.
- * x19 keys, x20 buf, x21 pn offset then header length, x22 total then sealed length,
- * x23 largest then pn, x24 work, x25 result, x26 pn length.
+ * quic_unprotect(keys, buf, pn_offset, total, work) -> status.
+ * Removes the header protection of the packet of total bytes at buf in place:
+ * its first byte and its packet number. Gives QUIC_INVALID_PACKET, with buf
+ * unchanged, when the packet is too short for the sample.
+ * x19 keys, x20 buf, x21 pn offset, x22 total, x24 work, x26 pn length.
  */
-LOCAL_FUNCTION quic_open
+LOCAL_FUNCTION quic_unprotect
     ENTER   0
     mov     x19, x0
     mov     x20, x1
     mov     x21, x2
     mov     x22, x3
-    mov     x23, x4
-    mov     x24, x5
-    mov     x25, x6
+    mov     x24, x4
     mov     x0, #QUIC_INVALID_PACKET
     add     x9, x21, #20
     cmp     x9, x22
@@ -413,6 +406,38 @@ LOCAL_FUNCTION quic_open
     mov     x2, x26
     add     x3, x24, #W_MASK
     bl      quic_mask_header
+    mov     x0, #QUIC_OK
+9:  LEAVE   0
+END_FUNCTION quic_unprotect
+
+/*
+ * quic_open(keys, buf, pn_offset, total, largest, work, result) -> status.
+ * The packet of total bytes at buf, its header protection removed by
+ * quic_unprotect: decodes the packet number with largest, and decrypts the
+ * payload in place after the header. result: the packet number, the header
+ * length and the payload length, three u64.
+ * Gives QUIC_INVALID_PACKET when the packet is too short for the sample or the
+ * tag, or its header or sealed payload is too long for the work area, and
+ * QUIC_DECRYPT_FAILED when the tag does not match. buf changes only on QUIC_OK.
+ * x19 keys, x20 buf, x21 pn offset then header length, x22 total then sealed length,
+ * x23 largest then pn, x24 work, x25 result, x26 pn length.
+ */
+LOCAL_FUNCTION quic_open
+    ENTER   0
+    mov     x19, x0
+    mov     x20, x1
+    mov     x21, x2
+    mov     x22, x3
+    mov     x23, x4
+    mov     x24, x5
+    mov     x25, x6
+    mov     x0, #QUIC_INVALID_PACKET
+    add     x9, x21, #20
+    cmp     x9, x22
+    b.hi    9f
+    ldrb    w9, [x20]                       /* the packet number length, from the first byte */
+    and     x9, x9, #3
+    add     x26, x9, #1
     mov     x0, #0                          /* the truncated packet number */
     add     x9, x20, x21
     mov     x10, x26
@@ -599,6 +624,16 @@ FUNCTION quic_packet_open
     mov     x1, x24
     mov     x2, x23
     bl      quic_copy
+    ldr     x2, [x20, #QUIC_OR_PN_OFFSET]
+    mov     x0, #QUIC_INVALID_PACKET
+    cmp     x2, x23
+    b.hs    9f
+    mov     x0, x19
+    add     x1, x21, #PS_BUF
+    mov     x3, x23
+    add     x4, x21, #PS_WORK
+    bl      quic_unprotect
+    cbnz    x0, 9f
     mov     x0, x19
     add     x1, x21, #PS_BUF
     ldr     x2, [x20, #QUIC_OR_PN_OFFSET]
@@ -607,10 +642,6 @@ FUNCTION quic_packet_open
     add     x5, x21, #PS_WORK
     add     x6, x21, #PS_WORK
     add     x6, x6, #W_SIZE                 /* PS_RESULT */
-    cmp     x2, x23
-    mov     x0, #QUIC_INVALID_PACKET
-    b.hs    9f
-    mov     x0, x19
     bl      quic_open
     cbnz    x0, 9f
     ldr     x9, [x21, #PS_RESULT]

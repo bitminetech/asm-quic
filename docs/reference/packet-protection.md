@@ -16,7 +16,8 @@
 - [`quic_pn_decode`](#function-quic_pn_decode): decodes a packet number.
 - [`quic_mask_header`](#function-quic_mask_header): applies a header protection mask.
 - [`quic_seal`](#function-quic_seal): protects a packet in place.
-- [`quic_open`](#function-quic_open): opens a packet in place.
+- [`quic_unprotect`](#function-quic_unprotect): removes the header protection of a packet in place.
+- [`quic_open`](#function-quic_open): decrypts a packet in place, its header protection off.
 
 ### Types
 
@@ -522,9 +523,53 @@ quic_seal(keys, buf, header_len, payload_len, pn, work) -> length
 - It returns the length, not a status.
 - Argument order: `keys`, `buf`, `header_len`, `payload_len`, `pn`, `work`.
 
+## Function `quic_unprotect`
+
+Removes the header protection of a packet in place: its first byte and its packet number (RFC 9001 section 5.4).
+
+### Signature
+
+```
+quic_unprotect(keys, buf, pn_offset, total, work) -> status
+```
+
+### Arguments
+
+| Name | Role | Type |
+|---|---|---|
+| `keys` | input | [`PacketKeys`](#type-packetkeys) |
+| `buf` | state | `total` bytes |
+| `pn_offset` | input | u64 |
+| `total` | input | u64 |
+| `work` | scratch | 3400 bytes at a multiple of 8 |
+
+### Returns
+
+- `QUIC_OK`: The header protection is off.
+- `QUIC_INVALID_PACKET`: The packet is too short for the sample; `buf` is unchanged.
+
+### Function does
+
+- Takes the mask from the sample 4 bytes after `pn_offset`, and removes it from the first byte and the packet number bytes.
+
+### Function never
+
+- Makes an OS call.
+
+### Limits
+
+- Stack of its own: 96 bytes on x86-64 (return address included), 96 bytes on ARM64, 112 bytes on RISC-V.
+
+### ABI
+
+- Role: L0.
+- Symbol: `quic_unprotect`, local to its object.
+- Convention: the core ABI for each ISA (ARCHITECTURE.md section 6).
+- Argument order: `keys`, `buf`, `pn_offset`, `total`, `work`.
+
 ## Function `quic_open`
 
-Removes the header protection of a packet in place, decodes its packet number and decrypts its frames after the header.
+Decodes the packet number of a packet whose header protection is off, and decrypts its frames in place after the header.
 
 ### Signature
 
@@ -537,7 +582,7 @@ quic_open(keys, buf, pn_offset, total, largest, work, result) -> status
 | Name | Role | Type |
 |---|---|---|
 | `keys` | input | [`PacketKeys`](#type-packetkeys) |
-| `buf` | input and output | `total` bytes |
+| `buf` | state | `total` bytes |
 | `pn_offset` | input | u64 |
 | `total` | input | u64 |
 | `largest` | input | u64: the largest received, or NONE |
@@ -550,13 +595,17 @@ quic_open(keys, buf, pn_offset, total, largest, work, result) -> status
 - `QUIC_INVALID_PACKET`: The packet is too short for the sample or the tag, or its header or sealed payload is too long for the work area.
 - `QUIC_DECRYPT_FAILED`: The tag does not match.
 
+### Caller must
+
+- Remove the header protection of `buf` first, with quic_unprotect.
+
+### Function does
+
+- Decrypts into `work`, and copies the frames into `buf` only on `QUIC_OK`, so a failure leaves `buf` unchanged.
+
 ### Function never
 
 - Makes an OS call.
-
-### Effects
-
-- `buf` may change when the status is not `QUIC_OK`.
 
 ### Limits
 

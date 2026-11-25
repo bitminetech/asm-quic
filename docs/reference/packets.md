@@ -366,8 +366,9 @@ quic_try_open(keys) -> status
 
 ### Function does
 
-- Copies the packet to the packet buffer of the scratch and opens it there, the result in the scratch.
-- Returns 0, or the error; the buffer then holds the first byte without header protection.
+- Copies the packet to the packet buffer of the scratch and opens it there with quic_unprotect, then quic_open; the result in the scratch.
+- Returns 0, or the error.
+- When quic_unprotect gives `QUIC_OK`, the packet buffer then holds the packet without header protection, which the caller reads for the key phase.
 
 ### Function never
 

@@ -682,8 +682,9 @@ END_FUNCTION quic_packet_in
 /*
  * quic_try_open(keys) -> 0 when the packet at s3 (s5 bytes, the packet
  * number at s4) opens with the keys: it is copied to the packet buffer of the
- * scratch and opened there, the result in SC_PKT_RESULT. Else the error;
- * the buffer then holds the first byte without header protection.
+ * scratch and opened there (quic_unprotect, then quic_open), the result in
+ * SC_PKT_RESULT. Else the error; when quic_unprotect gave QUIC_OK, the buffer
+ * then holds the packet without header protection.
  * s6 the space record.
  */
 LOCAL_FUNCTION quic_try_open
@@ -697,11 +698,18 @@ LOCAL_FUNCTION quic_try_open
     addi    a1, s10, SC_PKT_BUF
     mv      a2, s4
     mv      a3, s5
+    SCR     a4, SC_PKT_WORK
+    call    quic_unprotect
+    bnez    a0, 9f
+    mv      a0, s7
+    addi    a1, s10, SC_PKT_BUF
+    mv      a2, s4
+    mv      a3, s5
     ld      a4, SP_LARGEST_RECV(s6)
     SCR     a5, SC_PKT_WORK
     addi    a6, s10, SC_PKT_RESULT
     call    quic_open
-    LEAVE   0
+9:  LEAVE   0
 END_FUNCTION quic_try_open
 
 /* ---------------------------------------------------------------- Frames */
