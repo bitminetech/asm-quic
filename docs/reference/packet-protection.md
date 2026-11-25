@@ -850,6 +850,14 @@ The work area of `quic_packet_seal` and `quic_packet_open`.
 | ARM64 | ✅ | ✅ | ✅ |  |
 | RISC-V | ✅ |  |  |  |
 
+### `quic_unprotect`
+
+| ISA | Linux | Windows | macOS | `equal` |
+|---|---|---|---|---|
+| x86-64 | ✅ | ✅ | ✅ |  |
+| ARM64 | ✅ | ✅ | ✅ |  |
+| RISC-V | ✅ |  |  |  |
+
 ### `quic_open`
 
 | ISA | Linux | Windows | macOS | `equal` |
