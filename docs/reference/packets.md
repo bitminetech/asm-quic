@@ -1,5 +1,7 @@
 # Packets and frames
 
+Packets and frames, sent and received.
+
 ## Contents
 
 ### Functions

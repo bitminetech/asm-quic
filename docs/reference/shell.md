@@ -1,5 +1,7 @@
 # Shell
 
+UDP sockets, clock and random bytes.
+
 ## Contents
 
 ### Functions
@@ -34,6 +36,16 @@
 
 - Document: [ARCHITECTURE.md](https://github.com/bitminetech/asm-standard/blob/2a19d3f7fa737af1c01720b6e891703e53a682aa/ARCHITECTURE.md) sections 2 and 6, asm-standard at commit 2a19d3f.
 - Section: the shell of this library: UDP sockets, the clock and random bytes, for Linux (system calls), macOS (libSystem) and Windows (Winsock 2, kernel32, bcrypt).
+
+## OS calls
+
+| OS | Calls | Requirements |
+|---|---|---|
+| Linux | System calls `socket`, `setsockopt`, `bind`, `getsockname`, `sendto`, `recvfrom`, `ppoll`, `close`, `clock_gettime`, `getrandom` | Linux 3.17 or later, for `getrandom`. Numbers and layouts from the kernel uapi headers of each ISA, as in Debian trixie |
+| macOS | libSystem functions of the `# uses` lines in [platform/deps.sh](../../platform/deps.sh) | macOS 11.0 or later |
+| Windows | The ws2_32, kernel32 and bcrypt functions of the `# uses` lines in [platform/deps.sh](../../platform/deps.sh) | Windows 10 or later |
+
+- The OS calls use their own native stack, beyond the stack limit of the library's functions.
 
 ## Function `quic_shell_init`
 

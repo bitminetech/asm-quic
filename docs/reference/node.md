@@ -1,5 +1,7 @@
 # Node
 
+The node: config, state, step, events.
+
 ## Contents
 
 ### Functions
@@ -106,6 +108,20 @@
 - Document: [RFC 9000](https://www.rfc-editor.org/rfc/rfc9000) section 16.
 - Section: the state, the step, its events and actions, and variable-length integers.
 
+## Integration
+
+| Item | Value |
+|---|---|
+| Startup | `quic_shell_clock` gives the seed for `quic_init`; `quic_shell_init` builds the shell context; `quic_shell_bind` opens UDP sockets |
+| Event loop | The application owns it: it calls `quic_step` with a fresh tick and the events since the last step, and passes the events it did not handle again |
+| Actions | After a step returns 0, `quic_shell_send` sends its SEND actions; the application handles the other actions |
+| Wakeup | The application waits with `quic_shell_wait` until the WAKEUP time or a datagram, then reads with `quic_shell_receive` |
+| Buffers | Scratch of `QUIC_SCRATCH_SIZE` bytes; action room of `QUIC_ACTIONS_MIN` bytes after the 24-byte header |
+| Peer IDs | A DIAL names the peer ID to expect; CONNECTED gives the host key of the peer |
+| libp2p protocols | The application runs multistream-select and its protocols on OPEN_STREAM, STREAM_WRITE, STREAM_CLOSE and the STREAM actions |
+| Shutdown | `quic_shell_close` |
+| Concurrency | One thread at a time for a state and its shell context |
+
 ## Function `quic_state_size`
 
 Gives the bytes of the state that `quic_init` builds for a config.
@@ -211,9 +227,9 @@ quic_step(state, tick, events, scratch, actions, result) -> status
 |---|---|---|
 | `state` | state | the state of `quic_init` |
 | `tick` | input | [`Tick`](#type-tick) |
-| `events` | input | [`ByteList`](node.md#type-bytelist) of [`Event`](#type-event) values |
+| `events` | input | [`ByteList`](#type-bytelist) of [`Event`](#type-event) values |
 | `scratch` | scratch | u64 size, then at least `QUIC_SCRATCH_SIZE` bytes |
-| `actions` | output | [`ByteList`](node.md#type-bytelist) of [`Action`](#type-action) values |
+| `actions` | output | [`ByteList`](#type-bytelist) of [`Action`](#type-action) values |
 | `result` | output | [`StepResult`](#type-stepresult) |
 
 ### Returns

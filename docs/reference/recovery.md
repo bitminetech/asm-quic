@@ -1,5 +1,7 @@
 # Loss detection and congestion control
 
+Acks, timers, loss and NewReno.
+
 ## Contents
 
 ### Functions

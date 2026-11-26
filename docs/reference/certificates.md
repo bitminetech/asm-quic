@@ -1,5 +1,7 @@
 # Certificates
 
+The libp2p TLS certificate and DER.
+
 ## Contents
 
 ### Functions

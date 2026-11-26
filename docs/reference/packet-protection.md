@@ -1,5 +1,7 @@
 # Packet protection
 
+Initial keys, packet and header protection.
+
 ## Contents
 
 ### Functions

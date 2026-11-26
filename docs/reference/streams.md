@@ -1,5 +1,7 @@
 # Streams
 
+Streams and flow control.
+
 ## Contents
 
 ### Functions

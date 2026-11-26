@@ -1,5 +1,7 @@
 # Connections
 
+Connection slots, IDs and closing.
+
 ## Contents
 
 ### Functions
